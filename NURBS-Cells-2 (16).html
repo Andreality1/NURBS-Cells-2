@@ -193,7 +193,7 @@
                 </div>
             </div>
             <div class="editor-container">
-                <div id="line-numbers">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br>29<br>30<br>31<br>32<br>33<br>34<br>35<br>36<br>37<br>38<br>39<br>40<br>41<br>42<br>43<br>44<br>45<br>46<br>47<br>48<br>49<br>50<br>51<br>52<br>53<br>54<br>55<br>56<br>57<br>58<br>59<br>60<br>61<br>62<br>63<br>64<br>65<br>66<br>67<br>68<br>69<br>70<br>71<br>72<br>73<br>74<br>75<br>76<br>77<br>78<br>79<br>80<br>81<br>82<br>83<br>84<br>85<br>86<br>87<br>88<br>89<br>90<br>91<br>92<br>93<br>94<br>95<br>96<br>97<br>98<br>99<br>100<br>101<br>102<br>103<br>104<br>105<br>106<br>107<br>108<br>109<br>110<br>111<br>112<br>113<br>114<br>115<br>116<br>117<br>118<br>119<br>120<br>121<br>122<br>123<br>124<br>125<br>126<br>127<br>128<br>129<br>130<br>131<br>132<br>133<br>134<br>135<br>136<br>137<br>138<br>139<br>140<br>141<br>142<br>143<br>144<br>145<br>146<br>147<br>148<br>149<br>150<br>151<br>152<br>153<br>154<br>155<br>156<br>157<br>158<br>159<br>160<br>161<br>162<br>163<br>164<br>165<br>166<br>167<br>168<br>169<br>170</div>
+                <div id="line-numbers">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br>29<br>30<br>31<br>32<br>33<br>34<br>35<br>36<br>37<br>38<br>39<br>40<br>41<br>42<br>43<br>44<br>45<br>46<br>47<br>48<br>49<br>50<br>51<br>52<br>53<br>54<br>55<br>56<br>57<br>58<br>59<br>60<br>61<br>62<br>63<br>64<br>65<br>66<br>67<br>68<br>69<br>70<br>71<br>72<br>73<br>74<br>75<br>76<br>77<br>78<br>79<br>80<br>81<br>82<br>83<br>84<br>85<br>86<br>87<br>88<br>89<br>90<br>91<br>92<br>93<br>94<br>95<br>96<br>97<br>98<br>99<br>100<br>101<br>102<br>103<br>104<br>105<br>106<br>107<br>108<br>109<br>110<br>111<br>112<br>113<br>114<br>115<br>116<br>117<br>118<br>119<br>120<br>121<br>122<br>123<br>124<br>125<br>126<br>127<br>128<br>129<br>130<br>131<br>132<br>133<br>134<br>135<br>136<br>137<br>138<br>139<br>140<br>141<br>142<br>143<br>144<br>145<br>146<br>147<br>148<br>149<br>150<br>151<br>152<br>153<br>154<br>155<br>156<br>157<br>158<br>159<br>160<br>161<br>162<br>163<br>164<br>165<br>166</div>
                 <textarea id="shaderEditor" spellcheck="false" oninput="updateLineNumbers()" onscroll="syncScroll()">#version 300 es
 precision highp float;
 
@@ -216,8 +216,14 @@ struct Hit {
     float id; 
 };
 
-// --- NURBS MATHEMATICS ---
+// --- HELPER FOR CHROMATIC SCALE ---
+vec3 hsv2rgb(vec3 c) {
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
 
+// --- NURBS MATHEMATICS ---
 vec3 getBasis(float t) {
     float invT = 1.0 - t;
     return vec3(invT * invT, 2.0 * t * invT, t * t);
@@ -228,7 +234,6 @@ vec3 getPatchPoint(float u, float v, ControlPoint cp[9]) {
     vec3 bV = getBasis(v);
     vec3 pSum = vec3(0.0);
     float wSum = 0.0;
-    
     for (int i = 0; i &lt; 3; i++) {
         for (int j = 0; j &lt; 3; j++) {
             float w = bU[i] * bV[j] * cp[i * 3 + j].weight;
@@ -242,20 +247,15 @@ vec3 getPatchPoint(float u, float v, ControlPoint cp[9]) {
 Hit getNURBSSDF(vec3 p, ControlPoint cp[9]) {
     vec2 uv = vec2(0.5);
     float minDistSq = 1e10;
-    
     const int GRID = 8; 
     for(int i = 0; i &lt;= GRID; i++) {
         for(int j = 0; j &lt;= GRID; j++) {
             vec2 testUV = vec2(float(i)/float(GRID), float(j)/float(GRID));
             vec3 pS = getPatchPoint(testUV.x, testUV.y, cp);
             float d2 = dot(p - pS, p - pS);
-            if(d2 &lt; minDistSq) { 
-                minDistSq = d2; 
-                uv = testUV; 
-            }
+            if(d2 &lt; minDistSq) { minDistSq = d2; uv = testUV; }
         }
     }
-    
     for(int i = 0; i &lt; 6; i++) {
         vec3 pS = getPatchPoint(uv.x, uv.y, cp);
         float e = 0.001;
@@ -267,49 +267,39 @@ Hit getNURBSSDF(vec3 p, ControlPoint cp[9]) {
         float c = dot(dv, dv);
         float det = a * c - b * b;
         vec2 delta = vec2(dot(r, du) * c - dot(r, dv) * b, 
-                          dot(r, dv) * a - dot(r, du) * b) / (det + 0.0001);
+                          dot(r, dv) * a - dot(r, du) * b) / (det + 1e-6);
         uv = clamp(uv - delta * 0.5, 0.0, 1.0); 
     }
-
     vec3 pOnSurface = getPatchPoint(uv.x, uv.y, cp);
     return Hit(length(p - pOnSurface) - 0.02, uv, 1.0);
 }
 
-// --- SCENE SETUP ---
-
 Hit sceneSDF(vec3 p) {
     ControlPoint cp[9];
-    
     float R = 4.0;
-    float w = 0.70710678; // cos(45) for perfect circularity
+    float w = 0.70710678; 
+    float micro = 0.0001; 
     
-    // U = Radial direction, V = Angular direction
+    cp[0] = ControlPoint(vec3(micro, 0, 0), 1.0);
+    cp[1] = ControlPoint(vec3(micro, 0, micro), 1.0);
+    cp[2] = ControlPoint(vec3(0, 0, micro), 1.0);
     
-    // Inner Ring (U=0): All points at center (creates a disk center)
-    cp[0] = ControlPoint(vec3(0, 0, 0), 1.0);
-    cp[1] = ControlPoint(vec3(0, 0, 0), 1.0);
-    cp[2] = ControlPoint(vec3(0, 0, 0), 1.0);
-    
-    // Middle Ring (U=0.5): Halfway out, following the tangent-corner logic
     cp[3] = ControlPoint(vec3(R*0.5, 0, 0), 1.0);
-    cp[4] = ControlPoint(vec3(R*0.5, 0, R*0.5), w); // Corner point
+    cp[4] = ControlPoint(vec3(R*0.5, 0, R*0.5), w);
     cp[5] = ControlPoint(vec3(0, 0, R*0.5), 1.0);
-    
-    // Outer Ring (U=1.0): Full radius arc
     cp[6] = ControlPoint(vec3(R, 0, 0), 1.0);
-    cp[7] = ControlPoint(vec3(R, 0, R), w); // Corner point
+    cp[7] = ControlPoint(vec3(R, 0, R), w);
     cp[8] = ControlPoint(vec3(0, 0, R), 1.0);
 
-    Hit surface = getNURBSSDF(p, cp);
+    Hit res = getNURBSSDF(p, cp);
     
-    float dSpheres = 1e10;
-    for(int i = 0; i &lt; 9; i++) {
-        dSpheres = min(dSpheres, length(p - cp[i].pos) - 0.1);
+    for(int i = 3; i &lt; 9; i++) {
+        float d = length(p - cp[i].pos) - 0.15;
+        if(d &lt; res.dist) {
+            res = Hit(d, vec2(0.0), 2.0 + float(i));
+        }
     }
-
-    if(dSpheres &lt; surface.dist) return Hit(dSpheres, vec2(0.0), 2.0);
-    
-    return surface;
+    return res;
 }
 
 vec3 getNormal(vec3 p) {
@@ -324,15 +314,19 @@ vec3 getNormal(vec3 p) {
 void main() {
     vec2 uv_scr = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.y, u_resolution.x);
     
-    // Static top-downish view to see the disk clearly
-    float camAngle = u_time * 0.3;
-    vec3 ro = vec3(cos(camAngle)*10.0, 8.0, sin(camAngle)*10.0);
-    vec3 target = vec3(1.5, 0.0, 1.5);
+    // --- ROTATING CAMERA ---
+    float angle = u_time * 0.5; // Controls rotation speed
+    float radius = 8.0;         // Distance from center
+    vec3 target = vec3(2.0, 0.0, 2.0); // The center of the object
     
+    // Calculate side-view orbital position
+    vec3 ro = target + vec3(cos(angle) * radius, 4.0, sin(angle) * radius);
+    
+    // Camera Look-At Matrix
     vec3 f = normalize(target - ro);
-    vec3 r = normalize(cross(vec3(0,1,0), f));
+    vec3 r = normalize(cross(vec3(0, 1, 0), f)); // Using Y-up for natural side rotation
     vec3 u = cross(f, r);
-    vec3 rd = normalize(f * 2.0 + uv_scr.x * r + uv_scr.y * u);
+    vec3 rd = normalize(f * 1.5 + uv_scr.x * r + uv_scr.y * u);
 
     float t = 0.0;
     Hit hit;
@@ -342,24 +336,26 @@ void main() {
         t += hit.dist;
     }
 
-    vec3 background = vec3(0.05, 0.05, 0.08);
-    vec3 color = background;
+    vec3 color = vec3(0.01, 0.01, 0.015);
 
     if(t &lt; MAX_DIST) {
         vec3 p = ro + t * rd;
         vec3 n = getNormal(p);
-        vec3 l = normalize(vec3(5.0, 10.0, 2.0));
-        float diff = max(dot(n, l), 0.0);
+        float diff = max(dot(n, normalize(vec3(1.0, 2.0, 1.0))), 0.0);
         
-        if(hit.id == 1.0) { 
-            // Radial/Angular checkerboard
+        if(hit.id &lt; 1.5) { 
             vec2 grid = floor(hit.uv * 10.0);
             float checker = mod(grid.x + grid.y, 2.0);
-            vec3 albedo = mix(vec3(0.8, 0.2, 0.4), vec3(1.0, 0.4, 0.6), checker);
-            color = albedo * (diff + 0.2);
-        } else {
-            color = vec3(1.0, 0.9, 0.1) * (diff + 0.5);
+            color = mix(vec3(0.1), vec3(0.15), checker) * (diff + 0.3);
+        } else { 
+            float noteIndex = hit.id - 2.0; 
+            vec3 chromaticColor = hsv2rgb(vec3(noteIndex / 12.0, 0.85, 1.0));
+            color = chromaticColor * (diff + 0.6);
+            color += chromaticColor * 0.4; 
         }
+        
+        // Fog for depth
+        color = mix(color, vec3(0.01, 0.01, 0.015), 1.0 - exp(-0.02 * t));
     }
 
     outColor = vec4(pow(color, vec3(0.4545)), 1.0);
@@ -372,7 +368,7 @@ void main() {
                 <span>System Output</span>
                 <span id="term-status-icon">▼</span>
             </div>
-            <div id="terminal"><div class="log-entry update"><span class="time">[211ms]</span><span class="content">Shader Compiled Successfully</span></div><div class="log-entry update"><span class="time">[217ms]</span><span class="content">Time: 58.64s | FPS: 108</span></div><div class="log-entry update"><span class="time">[6563ms]</span><span class="content">Shader Compiled Successfully</span></div><div class="log-entry update"><span class="time">[6566ms]</span><span class="content">Time: 282.53s | FPS: 101</span></div></div>
+            <div id="terminal"><div class="log-entry update"><span class="time">[235ms]</span><span class="content">Shader Compiled Successfully</span></div><div class="log-entry update"><span class="time">[777ms]</span><span class="content">Time: 2351.83s | FPS: 144</span></div></div>
         </div>
     </div>
 
@@ -594,4 +590,4 @@ void main() { gl_Position = vec4(position, 0.0, 1.0); }</script>
         if (gl) compileShaderFromEditor();
     </script>
 
-</body><div></div><div></div></html>
+</body></html>
